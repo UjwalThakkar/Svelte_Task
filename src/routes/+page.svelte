@@ -1,18 +1,22 @@
 <script lang="ts">
-	import {
-		Dialog,
-		DialogTrigger,
-		DialogContent,
-		DialogHeader,
-		DialogTitle,
-		DialogFooter
-	} from '$lib/components/ui/dialog';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
+	import Button from '@/components/ui/button/button.svelte';
+	import { Dialog, DialogTrigger } from '@/components/ui/dialog';
+	import DialogContent from '@/components/ui/dialog/dialog-content.svelte';
+	import DialogFooter from '@/components/ui/dialog/dialog-footer.svelte';
+	import DialogHeader from '@/components/ui/dialog/dialog-header.svelte';
+	import DialogOverlay from '@/components/ui/dialog/dialog-overlay.svelte';
+	import DialogTitle from '@/components/ui/dialog/dialog-title.svelte';
+	import Input from '@/components/ui/input/input.svelte';
+
+	interface Student {
+		name: string;
+		phoneNo: string;
+		email: string;
+	}
 
 	let file = $state(null);
-	let student = $state({ name: '', phoneNo: '', email: '' });
-	let students = $state([]);
+	let students = $state<Student[]>([]);
+	let student = $state<Student>({ name: '', phoneNo: '', email: '' });
 
 	const downloadTemplate = () => {
 		const csvContent = 'name,phoneNo,email\nJohn Doe,9014285420,john@example.com';
@@ -25,44 +29,56 @@
 		URL.revokeObjectURL(url);
 	};
 
-	const handleUpload = (e) => {
-		file = e.target.files[0];
-		if (file) {
+	const handleUpload = (e: any) => {
+		try {
+			file = e.target.files[0];
 			const reader = new FileReader();
 			reader.onload = (event) => {
 				const csvData = event.target?.result;
 				const parsedStudents = csvData
-					?.split('\n')
+					.split('\n')
 					.slice(1)
 					.map((line) => {
 						const [name, phoneNo, email] = line.split(',');
 						return { name, phoneNo, email };
 					})
-					.filter((s) => s.name && s.email);
+					.filter((student: Student) => student.name && student.phoneNo && student.email);
 				students = [...students, ...parsedStudents];
-				console.log('File uploaded', $state.snapshot(students));
+				console.log($state.snapshot(students));
 			};
 			reader.readAsText(file);
+		} catch (error) {
+			console.error('Error uploading file: ', error);
 		}
 	};
 
-	const handleSubmit = () => {
-		if (!student.name || !student.email) {
-			console.log('please enter all details');
-			return;
-		} else {
+	const handleSubmit = (e: Event) => {
+		e.preventDefault;
+		try {
+			if (!student.name || !student.phoneNo || !student.email) {
+				throw new Error('please fill all the columns');
+			}
+			if (!/^[0-9]{10}$/.test(student.phoneNo)) {
+				throw new Error('Enter a valid phone no');
+			}
 			students = [...students, { ...student }];
-			console.log('Manual Entry Submited: ', $state.snapshot(students));
-			student = { name: '', phoneNo: '', email: '' }; // reset the form
+			console.log('Manual Entry Submitted', $state.snapshot(students));
+			student = { name: '', phoneNo: '', email: '' };
+		} catch (error) {
+			console.error('Error uploading data: ', error);
 		}
+	};
+
+	const handleCancel = () => {
+		student = { name: '', phoneNo: '', email: '' };
 	};
 </script>
 
-<div class="container mx-auto p-4">
+<div class="mt-4 flex h-[100vh] flex-col items-center">
+	<h1 class="mb-4 text-2xl font-bold">Student Management</h1>
 	<Dialog>
-		<h1 class="mb-4 text-2xl font-bold">Student Management</h1>
 		<DialogTrigger>
-			<Button class="rounded-md text-white ">Add Students</Button>
+			<Button class="rounded-md text-white ">+ Add Students</Button>
 		</DialogTrigger>
 		<DialogContent class="max-w-lg rounded-lg bg-white shadow-lg">
 			<DialogHeader>
@@ -125,7 +141,7 @@
 								</label>
 								<Input
 									id="phone-number"
-									type="number"
+									type="tel"
 									placeholder="Enter Phone Number"
 									class="w-full rounded-md bg-white"
 									bind:value={student.phoneNo}
@@ -147,7 +163,9 @@
 				</div>
 			</div>
 			<DialogFooter>
-				<Button variant="custom" class=" border-gray-500 text-gray-700">Cancel</Button>
+				<Button variant="custom" class=" border-gray-500 text-gray-700" onclick={handleCancel}
+					>Cancel</Button
+				>
 				<Button variant="custom" class=" bg-[#022f49] text-white" onclick={handleSubmit}
 					>Confirm</Button
 				>
